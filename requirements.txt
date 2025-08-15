@@ -4,3 +4,6 @@ pytest
 Flask-SQLAlchemy
 Flask-Login
 Flask-Bcrypt
+openai
+python-dotenv
+pytest-mock

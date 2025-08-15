@@ -1,6 +1,7 @@
 import os
 import pytest
 from app import app, db, User
+import openai
 
 @pytest.fixture(scope='function')
 def test_client():
@@ -75,10 +76,9 @@ def test_protected_routes(test_client):
     assert response.status_code == 200
     assert b"Login" in response.data # Should be redirected to login
 
-    # Test /chat API
-    response = test_client.post('/chat', json={'query': 'hello'}, follow_redirects=True)
-    assert response.status_code == 200
-    assert b"Login" in response.data # Should be redirected to login
+    # Test /chat API is protected
+    response = test_client.post('/chat', json={'query': 'hello'})
+    assert response.status_code == 302 # Should redirect to login
 
 
 def test_dashboard_page(test_client):
@@ -114,3 +114,47 @@ def test_settings_page(test_client):
     assert response.status_code == 200
     assert b"User Settings for settingsuser" in response.data
     assert b"Change Password" in response.data
+
+
+def test_chat_api_success(test_client, mocker):
+    """Test the /chat endpoint with a mocked successful API call."""
+    # Mock the OpenAI client and its response
+    mock_openai_client = mocker.patch('openai.OpenAI')
+
+    # Create a mock object that mimics the structure of the OpenAI response
+    mock_choice = mocker.Mock()
+    mock_choice.message.content = "This is a mocked AI response."
+    mock_completion = mocker.Mock()
+    mock_completion.choices = [mock_choice]
+
+    mock_openai_client.return_value.chat.completions.create.return_value = mock_completion
+
+    # Sign up and log in a user
+    test_client.post('/signup', data=dict(username='chattester', password='password'))
+    test_client.post('/login', data=dict(username='chattester', password='password'))
+
+    # Call the chat endpoint
+    response = test_client.post('/chat', json={'query': 'hello from test'})
+
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data['response'] == "This is a mocked AI response."
+    assert mock_openai_client.return_value.chat.completions.create.called
+
+
+def test_chat_api_auth_error(test_client, mocker):
+    """Test the /chat endpoint with a mocked AuthenticationError."""
+    # Mock the OpenAI client's create method to raise an AuthenticationError
+    mock_openai_client = mocker.patch('openai.OpenAI')
+    mock_openai_client.return_value.chat.completions.create.side_effect = openai.AuthenticationError(message="Invalid API key.", response=mocker.Mock(), body=None)
+
+    # Sign up and log in a user
+    test_client.post('/signup', data=dict(username='erroruser', password='password'))
+    test_client.post('/login', data=dict(username='erroruser', password='password'))
+
+    # Call the chat endpoint
+    response = test_client.post('/chat', json={'query': 'another test'})
+
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert "The API key may be invalid or missing" in json_data['response']

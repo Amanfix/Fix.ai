@@ -4,6 +4,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
+from dotenv import load_dotenv
+import openai
+
+load_dotenv() # Load environment variables from .env file
 
 # App initialization
 app = Flask(__name__)
@@ -104,21 +108,52 @@ def chat_page():
     return render_template('index.html')
 
 
-# The original API endpoint, now protected
+# The original API endpoint, now connected to OpenAI
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
     data = request.get_json()
     query = data.get('query')
 
-    dummy_response = {
-        "response": f"Hello {current_user.username}! This is a dummy response to your query: '{query}'.",
-        "sources": [
-            {"title": "Dummy Source 1", "url": "https://example.com/source1"},
-            {"title": "Dummy Source 2", "url": "https://example.com/source2"}
-        ]
-    }
-    return jsonify(dummy_response)
+    try:
+        # Note: The OpenAI client will automatically pick up the OPENAI_API_KEY from the environment
+        client = openai.OpenAI()
+
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": query}
+            ]
+        )
+
+        ai_response = completion.choices[0].message.content
+
+        response_data = {
+            "response": ai_response,
+            "sources": [] # No sources for now
+        }
+
+    except openai.AuthenticationError as e:
+        print(f"OpenAI API authentication error: {e}")
+        response_data = {"response": "Sorry, there is an issue with the AI service configuration. The API key may be invalid or missing.", "sources": []}
+    except openai.APIError as e:
+        # Handle API error here, e.g. retry or log
+        print(f"OpenAI API returned an API Error: {e}")
+        response_data = {"response": "Sorry, I encountered an error with the AI service. Please check the server logs.", "sources": []}
+    except openai.APIConnectionError as e:
+        # Handle connection error here
+        print(f"Failed to connect to OpenAI API: {e}")
+        response_data = {"response": "Sorry, I couldn't connect to the AI service. Please check your network connection.", "sources": []}
+    except openai.RateLimitError as e:
+        # Handle rate limit error (we recommend using exponential backoff)
+        print(f"OpenAI API request exceeded rate limit: {e}")
+        response_data = {"response": "Sorry, the request limit has been reached. Please try again later.", "sources": []}
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        response_data = {"response": "An unexpected error occurred. Please try again.", "sources": []}
+
+    return jsonify(response_data)
 
 # Function to create the database
 def create_db():
