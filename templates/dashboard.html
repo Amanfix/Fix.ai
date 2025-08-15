@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+</head>
+<body>
+    <h1>Welcome to your Dashboard, {{ current_user.username }}!</h1>
+    <p>From here, you can manage your account and access the application's features.</p>
+
+    <ul>
+        <li><a href="{{ url_for('chat_page') }}">Go to AI Chat</a></li>
+        <li><a href="{{ url_for('settings') }}">Account Settings</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+    </ul>
+</body>
+</html>

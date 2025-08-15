@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Settings</title>
+</head>
+<body>
+    <h1>User Settings for {{ current_user.username }}</h1>
+    <p>Here you will be able to change your account settings.</p>
+
+    <hr>
+
+    <h3>Change Password</h3>
+    <form method="POST" action="">
+        <label for="current_password">Current Password:</label><br>
+        <input type="password" id="current_password" name="current_password" disabled><br>
+        <label for="new_password">New Password:</label><br>
+        <input type="password" id="new_password" name="new_password" disabled><br><br>
+        <input type="submit" value="Change Password (Coming Soon)" disabled>
+    </form>
+
+    <br>
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+</body>
+</html>

@@ -1,3 +1,6 @@
 Flask
 Flask-Cors
 pytest
+Flask-SQLAlchemy
+Flask-Login
+Flask-Bcrypt
